@@ -1,0 +1,4 @@
+{
+    "idf.adapterTargetName": "esp32",
+    "C_Cpp.default.compilerPath": "/home/felipe/.platformio/packages/toolchain-xtensa-esp32/bin/xtensa-esp32-elf-gcc"
+}
