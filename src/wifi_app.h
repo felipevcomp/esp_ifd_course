@@ -1,11 +1,15 @@
 #ifndef MAIN_WIFI_APP_H
 #define MAIN_WIFI_APP_H
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+
 #include "esp_netif.h"
 
 // WiFi application settings
 #define WIFI_AP_SSID "ESP32_AP"          // AP name
-#define WIFI_APP_PASSWORD "password"     // AP password
+#define WIFI_AP_PASSWORD "password"     // AP password
 #define WIFI_AP_CHANNEL 1                // AP channel
 #define WIFI_AP_SSID_HIDDEN 0            // AP visibility
 #define WIFI_AP_MAX_CONNECTIONS 0        // AP max connections
@@ -17,11 +21,11 @@
 #define WIFI_STA_POWER_SAVE WIFI_PS_NONE // Power save not used
 #define MAX_SSID_LENGTH 32               // IEEE standard maximum
 #define MAX_PASSWORD_LENGTH 32           // IEEE standard maximum
-#define MAX_CONNECTION_RETRIES 5         // Retry number on disconnect
+#define MAX_CONNECTION_RETRIES 10         // Retry number on disconnect
 
 // netif object for the Station and Access Point
 extern esp_netif_t *esp_netif_sta;
-extern esp_netif_t *esp_netfif_ap;
+extern esp_netif_t *esp_netif_ap;
 
 /**
  * Structure for the WiFi application task

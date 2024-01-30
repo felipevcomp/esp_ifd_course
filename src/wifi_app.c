@@ -117,7 +117,7 @@ static void wifi_app_soft_ap_config(void)
         .ap = {
             .ssid = WIFI_AP_SSID,
             .ssid_len = strlen(WIFI_AP_SSID),
-            .password = WIFI_APP_PASSWORD,
+            .password = WIFI_AP_PASSWORD,
             .channel = WIFI_AP_CHANNEL,
             .ssid_hidden = WIFI_AP_SSID_HIDDEN,
             .authmode = WIFI_AUTH_WPA2_PSK,
@@ -130,12 +130,12 @@ static void wifi_app_soft_ap_config(void)
     esp_netif_ip_info_t ap_ip_info;
     memset(&ap_ip_info, 0x00, sizeof(ap_ip_info));
 
-    esp_netif_dhcps_stop(esp_netfif_ap);            ///> must cal this first
+    esp_netif_dhcps_stop(esp_netif_ap);            ///> must cal this first
     inet_pton(AF_INET, WIFI_AP_IP, &ap_ip_info.ip); ///> Assign acces point's static IP, GW and netmask
     inet_pton(AF_INET, WIFI_AP_GATEWAY, &ap_ip_info.gw);
     inet_pton(AF_INET, WIFI_AP_NETMASK, &ap_ip_info.netmask);
-    ESP_ERROR_CHECK(esp_netif_set_ip_info(esp_netfif_ap, &ap_ip_info)); ///> Statically configure the network interface
-    ESP_ERROR_CHECK(esp_netif_dhcps_start(esp_netfif_ap));              ///> Start the AP DHCP server (for conneting stations e.g your mobile device)
+    ESP_ERROR_CHECK(esp_netif_set_ip_info(esp_netif_ap, &ap_ip_info)); ///> Statically configure the network interface
+    ESP_ERROR_CHECK(esp_netif_dhcps_start(esp_netif_ap));              ///> Start the AP DHCP server (for conneting stations e.g your mobile device)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));                        ///> Setting the mode as Access Point / Station Mode
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config));           ///> Set our configuration
