@@ -54,11 +54,12 @@ static void wifi_app_event_handler(void *arg, esp_event_base_t event_base, int32
             ESP_LOGI(TAG, "WIFI_EVENT_STA_START");
             break;
 
-        case WIFI_EVENT_STA_STOP:
-            ESP_LOGI(TAG, "WIFI_EVENT_STA_STOP");
+        case WIFI_EVENT_STA_CONNECTED:
+            ESP_LOGI(TAG, "WIFI_EVENT_STA_CONNECTED");
             break;
 
-        default:
+        case WIFI_EVENT_STA_DISCONNECTED:
+            ESP_LOGI(TAG, "WIFI_EVENT_STA_DISCONNECTED");
             break;
         }
     }
@@ -108,39 +109,40 @@ static void wifi_app_default_wifi_init(void)
 }
 
 /**
- * Configures the WiFi access point settings and assings static IP to the SoftAP.
+ * Configures the WiFi access point settings and assigns the static IP to the SoftAP.
  */
 static void wifi_app_soft_ap_config(void)
 {
-    // SoftAP - WiFi acces point configuration
-    wifi_config_t ap_config = {
-        .ap = {
-            .ssid = WIFI_AP_SSID,
-            .ssid_len = strlen(WIFI_AP_SSID),
-            .password = WIFI_AP_PASSWORD,
-            .channel = WIFI_AP_CHANNEL,
-            .ssid_hidden = WIFI_AP_SSID_HIDDEN,
-            .authmode = WIFI_AUTH_WPA2_PSK,
-            .max_connection = WIFI_AP_MAX_CONNECTIONS,
-            .beacon_interval = WIFI_AP_BEACON_INTERVAL,
-        },
-    };
+    // SoftAP - WiFi access point configuration
+    wifi_config_t ap_config =
+        {
+            .ap = {
+                .ssid = WIFI_AP_SSID,
+                .ssid_len = strlen(WIFI_AP_SSID),
+                .password = WIFI_AP_PASSWORD,
+                .channel = WIFI_AP_CHANNEL,
+                .ssid_hidden = WIFI_AP_SSID_HIDDEN,
+                .authmode = WIFI_AUTH_WPA2_PSK,
+                .max_connection = WIFI_AP_MAX_CONNECTIONS,
+                .beacon_interval = WIFI_AP_BEACON_INTERVAL,
+            },
+        };
 
     // Configure DHCP for the AP
     esp_netif_ip_info_t ap_ip_info;
     memset(&ap_ip_info, 0x00, sizeof(ap_ip_info));
 
-    esp_netif_dhcps_stop(esp_netif_ap);            ///> must cal this first
+    esp_netif_dhcps_stop(esp_netif_ap);             ///> must cal this first
     inet_pton(AF_INET, WIFI_AP_IP, &ap_ip_info.ip); ///> Assign acces point's static IP, GW and netmask
     inet_pton(AF_INET, WIFI_AP_GATEWAY, &ap_ip_info.gw);
     inet_pton(AF_INET, WIFI_AP_NETMASK, &ap_ip_info.netmask);
     ESP_ERROR_CHECK(esp_netif_set_ip_info(esp_netif_ap, &ap_ip_info)); ///> Statically configure the network interface
-    ESP_ERROR_CHECK(esp_netif_dhcps_start(esp_netif_ap));              ///> Start the AP DHCP server (for conneting stations e.g your mobile device)
+    ESP_ERROR_CHECK(esp_netif_dhcps_start(esp_netif_ap));              ///> Start the AP DHCP server (for connecting stations e.g. your mobile device)
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));                        ///> Setting the mode as Access Point / Station Mode
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config));           ///> Set our configuration
-    ESP_ERROR_CHECK(esp_wifi_set_bandwidth(ESP_IF_WIFI_AP, WIFI_AP_BANDWIDTH)); ///> Our default bandwidth 20 MHz
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_STA_POWER_SAVE));                      ///> Power save set to "NONE"
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_APSTA));                    ///> Setting the mode as Access Point / Station Mode
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &ap_config));       ///> Set our configuration
+    ESP_ERROR_CHECK(esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_AP_BANDWIDTH)); ///> Our default bandwidth 20 MHz
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_STA_POWER_SAVE));                  ///> Power save set to "NONE"
 }
 
 /**
@@ -182,15 +184,15 @@ static void wifi_app_task(void *pvParameters)
 
             case WIFI_APP_MSG_CONNECTING_FROM_HTTP_SERVER:
                 ESP_LOGI(TAG, "WIFI_APP_MSG_CONNECTING_FROM_HTTP_SERVER");
-                // rgb_led_http_server_started();
 
                 break;
 
             case WIFI_APP_MSG_STA_CONNECTED_GOT_IP:
                 ESP_LOGI(TAG, "WIFI_APP_MSG_STA_CONNECTED_GOT_IP");
-                rgb_led_wifi_app_started();
+                rgb_led_wifi_connected();
 
                 break;
+
             default:
                 break;
             }
