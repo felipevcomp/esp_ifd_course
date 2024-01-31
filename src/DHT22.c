@@ -254,8 +254,8 @@ static void DHT22_task(void *pvParameter)
 	for (;;)
 	{
 		//		printf("=== Reading DHT ===\n");
-		int ret = readDHT();
 
+		int ret = readDHT();
 		errorHandler(ret);
 
 		//		printf("Hum %.1f\n", getHumidity());
