@@ -1,6 +1,7 @@
 #include "esp_http_server.h"
 #include "esp_log.h"
 
+#include "DHT22.h"
 #include "http_server.h"
 #include "tasks_common.h"
 #include "wifi_app.h"
@@ -10,6 +11,12 @@ static const char TAG[] = "http_server";
 
 // HTTP server task handle
 static httpd_handle_t http_server_handle = NULL;
+
+// HTTP server monitor task handle
+static TaskHandle_t task_http_server_monitor = NULL;
+
+// Queue handle used to manipulate the main queue of events
+static QueueHandle_t http_server_monitor_queue_handle;
 
 // Embedded files: jQuery, index.html, app.css, app.js and favicon.ico files
 extern const uint8_t jquery_3_3_1_min_js_start[] asm("_binary_jquery_3_3_1_min_js_start");
@@ -22,6 +29,51 @@ extern const uint8_t app_js_start[] asm("_binary_app_js_start");
 extern const uint8_t app_js_end[] asm("_binary_app_js_end");
 extern const uint8_t favicon_ico_start[] asm("_binary_favicon_ico_start");
 extern const uint8_t favicon_ico_end[] asm("_binary_favicon_ico_end");
+
+/**
+ * HTTP server monitor task used to track events of the HTTP server
+ * @param pvParameters parameter which can be passed to the task.
+ */
+static void http_server_monitor(void *parameter)
+{
+    http_server_queue_message_t msg;
+
+    for (;;)
+    {
+        if (xQueueReceive(http_server_monitor_queue_handle, &msg, portMAX_DELAY))
+        {
+            switch (msg.msgID)
+            {
+            case HTTP_MSG_WIFI_CONNECT_INIT:
+                ESP_LOGI(TAG, "HTTP_MSG_WIFI_CONNECT_INIT");
+                break;
+
+            case HTTP_MSG_WIFI_CONNECT_SUCCESS:
+                ESP_LOGI(TAG, "HTTP_MSG_WIFI_CONNECT_SUCCESS");
+                break;
+
+            case HTTP_MSG_WIFI_CONNECT_FAIL:
+                ESP_LOGI(TAG, "HTTP_MSG_WIFI_CONNECT_FAIL");
+                break;
+
+            case HTTP_MSG_OTA_UPDATE_SUCCESSFUL:
+                ESP_LOGI(TAG, "HTTP_MSG_OTA_UPDATE_SUCCESSFUL");
+                break;
+
+            case HTTP_MSG_OTA_UPDATE_FAILED:
+                ESP_LOGI(TAG, "HTTP_MSG_OTA_UPDATE_FAILED");
+                break;
+
+            case HTTP_MSG_OTA_UPDATE_INITIALIZED:
+                ESP_LOGI(TAG, "HTTP_MSG_OTA_UPDATE_INITIALIZED");
+                break;
+
+            default:
+                break;
+            }
+        }
+    }
+}
 
 /**
  * jQuery get handler requested when accessing the web page.
@@ -98,10 +150,41 @@ static esp_err_t http_server_favicon_ico_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/**
+ * DHT sensor readings JSON handler responds with DHT22 sensor data
+ * @param req HTTP request for which the uri needs to be handled
+ * @return ESP_OK
+ */
+static esp_err_t http_server_get_dht_sensor_readings_json_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "/dhtSensor.json requested");
+
+    char dhtSensorJSON[100];
+
+    sprintf(dhtSensorJSON, "{\"temp\":\"%.1f\",\"humidity\":\"%.1f\"}", getTemperature(), getHumidity());
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, dhtSensorJSON, strlen(dhtSensorJSON));
+
+    return ESP_OK;
+}
+
 static httpd_handle_t http_server_configure(void)
 {
     // Generate the default configuration
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+    // HTTP server monitor task
+    xTaskCreatePinnedToCore(&http_server_monitor,
+                            "http_server_monitor",
+                            HTTP_SERVER_MONITOR_STACK_SIZE,
+                            NULL,
+                            HTTP_SERVER_MONITOR_PRIORITY,
+                            &task_http_server_monitor,
+                            HTTP_SERVER_MONITOR_CORE_ID);
+
+    // Create the message queue
+    http_server_monitor_queue_handle = xQueueCreate(3, sizeof(http_server_queue_message_t));
 
     // The core that the HTTP server will run on
     config.core_id = HTTP_SERVER_TASK_CORE_ID;
@@ -117,9 +200,9 @@ static httpd_handle_t http_server_configure(void)
     config.send_wait_timeout = 10;
 
     ESP_LOGI(TAG,
-            "http_server_configure: Starting server on port: '%d' with task priority: '%d'",
-            config.server_port,
-            config.task_priority);
+             "http_server_configure: Starting server on port: '%d' with task priority: '%d'",
+             config.server_port,
+             config.task_priority);
 
     // Start the httpd server
     if (httpd_start(&http_server_handle, &config) == ESP_OK)
@@ -137,7 +220,7 @@ static httpd_handle_t http_server_configure(void)
 
         // Register index.html handler
         httpd_uri_t index_html = {
-            .uri = "/",
+            .uri = "/index.html",
             .method = HTTP_GET,
             .handler = http_server_index_html_handler,
             .user_ctx = NULL,
@@ -171,6 +254,14 @@ static httpd_handle_t http_server_configure(void)
         };
         httpd_register_uri_handler(http_server_handle, &favicon_ico);
 
+        // register dhtSensor.json handler
+        httpd_uri_t dht_sensor_json = {
+            .uri = "/dhtSensor.json",
+            .method = HTTP_GET,
+            .handler = http_server_get_dht_sensor_readings_json_handler,
+            .user_ctx = NULL};
+        httpd_register_uri_handler(http_server_handle, &dht_sensor_json);
+
         return http_server_handle;
     }
 
@@ -187,7 +278,23 @@ void http_server_start(void)
 
 void http_server_stop(void)
 {
-    httpd_stop(http_server_handle);
-    ESP_LOGI(TAG, "http_server_stop: stopping HTTP server");
-    http_server_handle = NULL;
+    if (http_server_handle)
+    {
+        httpd_stop(http_server_handle);
+        ESP_LOGI(TAG, "http_server_stop: stopping HTTP server");
+        http_server_handle = NULL;
+    }
+    if (task_http_server_monitor)
+    {
+        vTaskDelete(task_http_server_monitor);
+        ESP_LOGI(TAG, "http_server_stop: stopping HTTP server monitor");
+        task_http_server_monitor = NULL;
+    }
+}
+
+BaseType_t http_server_monitor_send_message(http_server_message_e msgID)
+{
+    http_server_queue_message_t msg;
+    msg.msgID = msgID;
+    return xQueueSend(http_server_monitor_queue_handle, &msg, portMAX_DELAY);
 }
