@@ -105,6 +105,13 @@ static void http_server_monitor(void *parameter)
 
                 break;
 
+            case HTTP_MSG_WIFI_USER_DISCONNECT:
+                ESP_LOGI(TAG, "HTTP_MSG_WIFI_USER_DISCONNECT");
+
+                g_wifi_connect_status = HTTP_WIFI_STATUS_DISCONNECTED;
+
+                break;
+
             case HTTP_MSG_OTA_UPDATE_SUCCESSFUL:
                 ESP_LOGI(TAG, "HTTP_MSG_OTA_UPDATE_SUCCESSFUL");
                 g_fw_update_status = OTA_UPDATE_SUCCESSFUL;
@@ -254,7 +261,7 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
             }
             else
             {
-                printf("http_server_OTA_update_handler: Writing to partition subtype %d at offset 0x%lx\r\n", update_partition->subtype, update_partition->address);
+                // printf("http_server_OTA_update_handler: Writing to partition subtype %d at offset 0x%x\r\n", update_partition->subtype, update_partition->address);
             }
 
             // Write this first part of the data
@@ -276,7 +283,7 @@ esp_err_t http_server_OTA_update_handler(httpd_req_t *req)
         if (esp_ota_set_boot_partition(update_partition) == ESP_OK)
         {
             const esp_partition_t *boot_partition = esp_ota_get_boot_partition();
-            ESP_LOGI(TAG, "http_server_OTA_update_handler: Next boot partition subtype %d at offset 0x%lx", boot_partition->subtype, boot_partition->address);
+            // ESP_LOGI(TAG, "http_server_OTA_update_handler: Next boot partition subtype %d at offset 0x%x", boot_partition->subtype, boot_partition->address);
             flash_successful = true;
         }
         else
