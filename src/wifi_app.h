@@ -1,10 +1,3 @@
-/*
- * wifi_app.h
- *
- *  Created on: Oct 17, 2021
- *      Author: kjagu
- */
-
 #ifndef MAIN_WIFI_APP_H_
 #define MAIN_WIFI_APP_H_
 
@@ -36,8 +29,8 @@ extern esp_netif_t *esp_netif_sta;
 extern esp_netif_t *esp_netif_ap;
 
 /**
- * Structure for the WiFi application task
- * @note Expand this based on application requirements
+ * Message IDs for the WiFi application task
+ * @note Expand this based on your application requirements.
  */
 typedef enum wifi_app_message
 {
@@ -62,13 +55,12 @@ typedef struct wifi_app_queue_message
  * Sends a message to the queue
  * @param msgID message ID from the wifi_app_message_e enum.
  * @return pdTRUE if an item was successfully sent to the queue, otherwise pdFALSE.
- * @note Expand the parameter list based on your requirements e.g. how you've expanded the wifi_app_queue_message_t
+ * @note Expand the parameter list based on your requirements e.g. how you've expanded the wifi_app_queue_message_t.
  */
 BaseType_t wifi_app_send_message(wifi_app_message_e msgID);
 
 /**
- * Structure for the message queue
- * @note Expand this based on application requirements e.g. add another type and parameter as required
+ * Starts the WiFi RTOS task
  */
 void wifi_app_start(void);
 
@@ -93,4 +85,4 @@ void wifi_app_call_callback(void);
  */
 int8_t wifi_app_get_rssi(void);
 
-#endif
+#endif /* MAIN_WIFI_APP_H_ */

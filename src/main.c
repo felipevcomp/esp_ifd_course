@@ -1,7 +1,3 @@
-/**
- * Application entry point.
- */
-
 #include "nvs_flash.h"
 
 #include "DHT22.h"
